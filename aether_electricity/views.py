@@ -1,38 +1,82 @@
 from django.shortcuts import render
 import requests
 
+from aether_electricity.models import ElectricityUser, ProposalUtility
+
 url = 'https://api.openei.org/utility_rates'
 api_key = 'wA2jMcGQG4CovUDCfwZAZcBHRyv8P4jWvr1P6hBm'
 version = 'latest'
 format = 'json'
 epoch = 1640995200
 
-def calculate_cost_formula_1(user_input):
-    consumption, escalator, most_likely_utility, utilities, energy_rate, _ = get_utilities(user_input)
+def calculate_cost_formula_1(user, user_input):
+    address, consumption, escalator, most_likely_utility_id, most_likely_utility, utilities, energy_rate, _ = get_utilities(user_input)
+
+    if len(utilities) < 0:
+        return None
 
     average, first_year_cost = get_price_formula_1(consumption, escalator, energy_rate) 
 
+    store_electricity_user(user, address, consumption, escalator, most_likely_utility_id, most_likely_utility, utilities, average, first_year_cost, energy_rate)
+
     context = build_context(average, most_likely_utility, utilities, first_year_cost)
     return context
 
-def calculate_cost_formula_2(user_input):
-    consumption, escalator, most_likely_utility, utilities, energy_rate, weekdays_schedule = get_utilities(user_input)
+def calculate_cost_formula_2(user, user_input):
+    address, consumption, escalator, most_likely_utility_id, most_likely_utility, utilities, energy_rate, weekdays_schedule = get_utilities(user_input)
+
+    if len(utilities) < 0:
+        return None
 
     average, first_year_cost = get_price_formula_2(consumption, escalator, energy_rate, weekdays_schedule) 
 
+    store_electricity_user(user, address, consumption, escalator, most_likely_utility_id, most_likely_utility, utilities, average, first_year_cost, energy_rate)
+
     context = build_context(average, most_likely_utility, utilities, first_year_cost)
     return context
+
+def store_electricity_user(user, 
+                           address, 
+                           consumption, 
+                           escalator, 
+                           most_likely_utility_id, 
+                           most_likely_utility, 
+                           utilities, 
+                           average, 
+                           first_year_cost, 
+                           energy_rate):
+    if user.is_anonymous:
+        return
+
+    proposal_utility, _ = ProposalUtility.objects.get_or_create(
+    id=most_likely_utility_id,
+    defaults={
+        'tariff_name': most_likely_utility,
+        'tariff_matrix': energy_rate,
+    }
+)
+
+    ElectricityUser.objects.create(
+        user = user,
+        address = address,
+        consumption = consumption,
+        escalator = escalator,
+        average_rate = average,
+        most_likely_utility_tariff = most_likely_utility,
+        utility_tariff_list = utilities,
+        first_year_cost = first_year_cost,
+        selected_utility_tariff = proposal_utility
+    )
 
 def get_utilities(user_input):
     address = user_input.get('address')
     consumption = user_input.get('consumption')
     escalator = user_input.get('escalator')
 
-    most_likely_utility, utilities = get_utility_list(address=address)
-
+    most_likely_utility, most_likely_utility_id, utilities = get_utility_list(address=address)
     energy_rate, weekdays_schedule = get_detail_utility_rate(utility=most_likely_utility)
 
-    return consumption, escalator, most_likely_utility, utilities, energy_rate, weekdays_schedule
+    return address, consumption, escalator, most_likely_utility_id, most_likely_utility, utilities, energy_rate, weekdays_schedule
 
 def build_context(average, most_likely_utility, utilities, first_year_cost):
     context = {
@@ -52,16 +96,17 @@ def get_utility_list(address):
         'address': address,
         'detail': 'minimal'
     }
-
+    
     utilities = requests.get(url=url, params=params).json().get('items')
     return filter_utility(utilities)
 
 def filter_utility(utilities):
     most_likely_utility = ''
+    most_likely_utility_id = ''
     satisfied_utilities = []
 
     for utility in utilities:
-        if utility.get('startdate') < epoch:
+        if 'startdate' not in utility or utility.get('startdate') < epoch:
             continue
         satisfied_utilities.append(utility.get('utility'))
 
@@ -70,8 +115,9 @@ def filter_utility(utilities):
         
         if utility.get('approved') and utility.get('is_default'):
             most_likely_utility = utility.get('utility')
+            most_likely_utility_id = utility.get('label')
 
-    return most_likely_utility, satisfied_utilities
+    return most_likely_utility, most_likely_utility_id, satisfied_utilities
 
 def get_detail_utility_rate(utility):
     params = {

@@ -9,16 +9,26 @@ def main_view(request):
         return render(request, 'main.html')
     
 def calculation_view(request):
-    if request.method != 'POST':
-        return render(request, 'method_not_allowed.html')
-    else:
+    if request.method == 'POST':
+        user = request.user
         data = request.POST
         if 'calculate_formula_1' in data:
-            context = calculate_cost_formula_1(data)
-            return render(request, 'calculation_method_1.html', context)
+            context = calculate_cost_formula_1(user, data)
+            if context == None:
+                return render(request, 'not_exist.html')
+            else:    
+                return render(request, 'calculation_method_1.html', context)
 
         elif 'calculate_formula_2' in data:
-            context = calculate_cost_formula_2(data)
-            return render(request, 'calculation_method_2.html', context)
+            context = calculate_cost_formula_2(user, data)
+            if context == None:
+                return render(request, 'not_exist.html')
+            else:
+                return render(request, 'calculation_method_2.html', context)
         else:
             return render(request, 'method_not_allowed.html')
+    #elif request.method == 'PUT':
+        data = request.PUT
+    else:
+
+        return render(request, 'method_not_allowed.html')

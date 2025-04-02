@@ -8,7 +8,7 @@ class ElectricityUser(models.Model):
     address = models.CharField(max_length=255)
     consumption = models.PositiveIntegerField()
     escalator = models.PositiveIntegerField()
-    avrage_rate = models.FloatField()
+    average_rate = models.FloatField()
     most_likely_utility_tariff = models.CharField(max_length=255)
     utility_tariff_list = models.JSONField(default=list)
     first_year_cost = models.FloatField()
@@ -17,4 +17,4 @@ class ElectricityUser(models.Model):
 class ProposalUtility(models.Model):
     id = models.CharField(unique=True, max_length=255, primary_key=True)
     tariff_name = models.CharField(max_length=255) 
-    tariff_maxtrix = models.JSONField(default=list)
+    tariff_matrix = models.JSONField(default=list)
