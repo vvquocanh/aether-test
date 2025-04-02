@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+    <body>
+        <h1>Aether Electricity Calculation</h1>
+        <p>Average cost per kWh: {{ average_cost_per_kwh|floatformat:2 }}</p>
+        <p>Most likely utility tariff: {{ most_likely_utility_tariff }}</p>
+
+        <label for="utility">Chosen utility tariff:</label>
+        <select name="utility" id="utility">
+            {% for tariff in utility_tariffs %}
+                <option value="{{ tariff }}" {% if tariff == most_likely_utility_tariff %}selected{% endif %}>
+                    {{ tariff }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <p>First year cost: {{ first_year_cost|floatformat:2 }}</p>
+    </body>
+</html>
