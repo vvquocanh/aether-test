@@ -3,8 +3,10 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from aether_electricity.views import (
     UtilityTariff,
-    calculate_cost_formula_1, 
-    recalculate_formula_1)
+    calculate_cost_formula_1,
+    calculate_cost_formula_2, 
+    recalculate_formula_1,
+    recalculate_formula_2)
 
 # Create your views here.
 def main_view(request):
@@ -29,7 +31,7 @@ def calculation_view(request):
                 return render(request, 'calculation_method_1.html', context)
 
         elif 'calculate_formula_2' in data:
-            #context = calculate_cost_formula_2(user, data)
+            context = calculate_cost_formula_2(user, data)
             if context == None:
                 return render(request, 'not_exist.html')
             else:
@@ -38,15 +40,30 @@ def calculation_view(request):
             return render(request, 'method_not_allowed.html')
     elif request.method == 'PUT':
         data = json.loads(request.body.decode('utf-8'))
+        consumption = int(request.session.get('consumption'))
+        escalator = int(request.session.get('escalator'))
+        
         if data.get('calculate_formula') == 1:
-            consumption = int(request.session.get('consumption'))
-            escalator = int(request.session.get('escalator'))
             context = recalculate_formula_1(data.get('tariff_id'), consumption, escalator)
-            return JsonResponse({
+            return JsonResponse(
+                {
                 'average_cost_per_kwh': context['average_cost_per_kwh'],
                 'first_year_cost': context['first_year_cost'],
                 'cost_graph': context['cost_graph']
-            })
+                }
+            )
+        
+        elif data.get('calculate_formula') == 2:
+            context = recalculate_formula_2(data.get('tariff_id'), consumption, escalator)
+            print(context['average_cost_per_kwh'])
+            return JsonResponse(
+                {
+                'average_cost_per_kwh': context['average_cost_per_kwh'],
+                'first_year_cost': context['first_year_cost'],
+                'cost_graph': context['cost_graph']
+                }
+            )
+
         else:
             return render(request, 'method_not_allowed.html') 
     else:
