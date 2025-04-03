@@ -56,12 +56,12 @@ def store_electricity_user(user,
         return None
 
     proposal_utility, _ = ProposalUtility.objects.get_or_create(
-    id=most_likely_tariff.id,
-    defaults={
-        'tariff_name': most_likely_tariff.name,
-        'tariff_matrix': energy_rate,
-    }
-)
+        id=most_likely_tariff.id,
+        defaults={
+            'tariff_name': most_likely_tariff.name,
+            'tariff_matrix': energy_rate,
+        }
+    )
 
     ElectricityUser.objects.create(
         user = user,
@@ -74,6 +74,7 @@ def store_electricity_user(user,
         first_year_cost = first_year_cost,
         selected_utility_tariff = proposal_utility
     )
+    
 
 def recalculate_formula_1(id, consumption, escalator):
     energy_rate, _ = get_detail_utility_rate(label=id)
