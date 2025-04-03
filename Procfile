@@ -1,1 +1,1 @@
-web: gunicorn aether.wsgi:application --log-file
+web: gunicorn aether.wsgi:application
