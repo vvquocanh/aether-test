@@ -3,10 +3,11 @@
     <head>
         <title>Aether Electricity Calculation</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.14.0/plotly.min.js"></script>
     </head>
     <body>
         <h1>Aether Electricity Calculation</h1>
-        <p>Average cost per kWh: <span id="average_cost"></span>{{ average_cost_per_kwh|floatformat:2 }}</p>
+        <p>Average cost per kWh: <span id="average_cost">{{ average_cost_per_kwh|floatformat:2 }}</span></p>
         <p>Most likely utility tariff: {{ most_likely_utility_tariff }}</p>
 
         <label for="utility">Chosen utility tariff:</label>
@@ -18,7 +19,11 @@
             {% endfor %}
         </select>
 
-        <p>First year cost: <span id="first_year_cost"></span>{{ first_year_cost|floatformat:2 }}</p>
+        <p>First year cost: <span id="first_year_cost">{{ first_year_cost|floatformat:2 }}</span></p>
+
+        <div id="graph-container">
+            {{ cost_graph|safe }}
+        </div>
     </body>
 
     <script>
@@ -43,6 +48,7 @@
             success: function(data) {
                 $('#average_cost').text(parseFloat(data.average_cost_per_kwh).toFixed(2));
                 $('#first_year_cost').text(parseFloat(data.first_year_cost).toFixed(2));
+                $('#graph-container').html(data.cost_graph);
             },
             error: function(xhr, status, error) {
                 console.error('Error updating calculations:', error);

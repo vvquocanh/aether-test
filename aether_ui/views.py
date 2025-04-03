@@ -17,8 +17,10 @@ def calculation_view(request):
     if request.method == 'POST':
         user = request.user
         data = request.POST
+
         request.session['consumption'] = data.get('consumption')
         request.session['escalator'] = data.get('escalator')
+
         if 'calculate_formula_1' in data:
             context = calculate_cost_formula_1(user, data)
             if context == None:
@@ -37,12 +39,13 @@ def calculation_view(request):
     elif request.method == 'PUT':
         data = json.loads(request.body.decode('utf-8'))
         if data.get('calculate_formula') == 1:
-            consumption = request.session.get('consumption')
-            escalator = request.session.get('escalator')
+            consumption = int(request.session.get('consumption'))
+            escalator = int(request.session.get('escalator'))
             context = recalculate_formula_1(data.get('tariff_id'), consumption, escalator)
             return JsonResponse({
                 'average_cost_per_kwh': context['average_cost_per_kwh'],
-                'first_year_cost': context['first_year_cost']
+                'first_year_cost': context['first_year_cost'],
+                'cost_graph': context['cost_graph']
             })
         else:
             return render(request, 'method_not_allowed.html') 

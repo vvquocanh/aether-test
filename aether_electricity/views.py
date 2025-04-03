@@ -1,5 +1,8 @@
 from django.shortcuts import render
+import numpy as np
 import requests
+import matplotlib.pyplot as plt
+import mpld3
 
 from aether_electricity.models import ElectricityUser, ProposalUtility
 
@@ -20,11 +23,11 @@ def calculate_cost_formula_1(user, user_input):
     if len(tariffs) < 0:
         return None
 
-    average, first_year_cost = get_price_formula_1(consumption, escalator, energy_rate) 
+    average, first_year_cost, cost_graph = get_price_formula_1(consumption, escalator, energy_rate) 
 
     store_electricity_user(user, address, consumption, escalator, most_likely_tariff, tariffs, average, first_year_cost, energy_rate)
 
-    context = build_context(average, most_likely_tariff, tariffs, first_year_cost)
+    context = build_context(average, most_likely_tariff, tariffs, first_year_cost, cost_graph)
     return context
 
 """ def calculate_cost_formula_2(user, user_input):
@@ -73,39 +76,40 @@ def store_electricity_user(user,
     )
 
 def recalculate_formula_1(id, consumption, escalator):
-    energy_rate, weekdays_schedule = get_detail_utility_rate(label=id)
+    energy_rate, _ = get_detail_utility_rate(label=id)
 
-    average, first_year_cost = get_price_formula_1(consumption, escalator, energy_rate)
+    average, first_year_cost, cost_graph = get_price_formula_1(consumption, escalator, energy_rate)
     
-    context = build_update_context(average, first_year_cost)
-    print(context)
+    context = build_update_context(average, first_year_cost, cost_graph)
     return context
 
 
 def get_utilities(user_input):
     address = user_input.get('address')
-    consumption = user_input.get('consumption')
-    escalator = user_input.get('escalator')
+    consumption = int(user_input.get('consumption'))
+    escalator = int(user_input.get('escalator'))
 
     most_likely_tariff, tariffs = get_tariff_list(address)
     energy_rate, weekdays_schedule = get_detail_utility_rate(label=most_likely_tariff.id)
 
     return address, consumption, escalator, most_likely_tariff, tariffs, energy_rate, weekdays_schedule
 
-def build_context(average, most_likely_tariff, tariffs, first_year_cost):
+def build_context(average, most_likely_tariff, tariffs, first_year_cost, cost_graph):
     context = {
         'average_cost_per_kwh': average,
         'most_likely_utility_tariff': most_likely_tariff.name,
         'utility_tariffs': tariffs,
-        'first_year_cost': first_year_cost
+        'first_year_cost': first_year_cost,
+        'cost_graph': cost_graph
     }
 
     return context
 
-def build_update_context(average, first_year_cost):
+def build_update_context(average, first_year_cost, cost_graph):
     context = {
         'average_cost_per_kwh': average,
-        'first_year_cost': first_year_cost
+        'first_year_cost': first_year_cost,
+        'cost_graph': cost_graph
     }
 
     return context
@@ -163,9 +167,40 @@ def get_price_formula_1(consumption, escalator, energy_rate):
             rate_count += 1
 
     average = total_rate / rate_count
-    first_year_cost = float(consumption) * average
 
-    return average, first_year_cost
+    first_year_cost, cost_graph = calculate_annual_cost(average, consumption, escalator)
+
+    return average, first_year_cost, cost_graph
+
+def calculate_annual_cost(average, consumption, escalator):
+    first_year_cost = 0
+    x = np.arange(1, 21)
+    y = np.array([])
+
+    for i in range (0, 20):
+        annual_cost = consumption * average
+        if i == 0:
+            first_year_cost = annual_cost
+        
+        y = np.append(y, annual_cost)
+
+        consumption += consumption * escalator / 100
+
+    cost_graph = draw_cost_graph(x, y)
+
+    return first_year_cost, cost_graph
+
+def draw_cost_graph(x, y):
+    plt.figure(figsize=(10,6))
+    plt.plot(x, y, marker='o')
+    plt.title('Cost Graph')
+    plt.xlabel('Year')
+    plt.ylabel('Cost')
+
+    cost_graph = mpld3.fig_to_html(plt.gcf())
+
+    return cost_graph
+
 """ 
 def get_price_formula_2(consumption, escalator, energy_rate, weekdays_schedule):
     average = 0
